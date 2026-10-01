@@ -8,6 +8,8 @@ and then verify that password against the generated hash.
 import bcrypt
 import getpass
 
+locked = False
+
 def create_password():
     """Create a bcrypt hash and save it to a file."""
     while True:
@@ -57,6 +59,12 @@ def verify_password():
     Additionally, it checks if the hashed password file exists and is not empty before proceeding with the verification.
     If the file does not exist or is empty, it informs the user to create a password first.
     """
+    global locked
+    failed_counter = 0
+    if locked:
+        print("Account is locked due to too many failed attempts.")
+        return
+
     try:
         with open("hashed_password.txt", "rb") as f:
             hashed_password = f.read()
@@ -69,14 +77,23 @@ def verify_password():
     if not hashed_password:
         print("No hashed password found. Please create a password first.")
         return
+    while True:
+        password_to_verify = getpass.getpass("Enter the password to verify: ")
+        password_bytes = password_to_verify.encode('utf-8')
 
-    password_to_verify = getpass.getpass("Enter the password to verify: ")
-    password_bytes = password_to_verify.encode('utf-8')
+        if bcrypt.checkpw(password_bytes, hashed_password):
+            print("Password matches the hash.")
+            break
+        else:
+            failed_counter += 1
+            print("Password does not match the hash.")
+            print(f"Failed attempts: {failed_counter}")
 
-    if bcrypt.checkpw(password_bytes, hashed_password):
-        print("Password matches the hash.")
-    else:
-        print("Password does not match the hash.")
+            if failed_counter >= 5:
+                locked = True
+                print("Too many failed attempts. Account locked.")
+                break
+
 
 while True:
     options = input("Enter 'New' to create a password or 'Verify' to verify a password or 'Exit' to quit: ").lower()
